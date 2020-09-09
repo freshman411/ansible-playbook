@@ -1,0 +1,39 @@
+---
+- name: untar elasticsearch
+  unarchive:
+    src: "/root/soft/elasticsearch-7.1.1-linux-x86_64.tar.gz"
+    dest: "/usr/local/"
+    copy: yes
+  tags:
+  - untar_es
+
+
+- name: 修改目录权限
+  shell: chown -R elastic.elastic /usr/local/elasticsearch-7.1.1
+  tags:
+  - change_per
+
+- name: 修改内存
+  lineinfile:
+    dest: /usr/local/elasticsearch-7.1.1/config/jvm.options 
+    regexp: '^{{ item.old}}'
+    line: "{{ item.new }}"
+  with_items:
+  - {"old":"-Xms","new":"-Xms6g"}
+  - {"old":"-Xmx","new":"-Xmx6g"}
+
+  tags:
+  - modify_config
+
+- name: 拷贝elasticsearch.yml
+  template: "src=elasticsearch.yml.j2 dest=/usr/local/elasticsearch-7.1.1/config/elasticsearch.yml"
+  tags:
+  - copy_elasticsearch_yml
+
+- name: 拷贝 elasticsearch.service
+  copy: src=elasticsearch.service dest=/usr/lib/systemd/system/
+  tags:
+  - copy_elasticsearch_service
+
+- name: 启动es服务
+  shell: systemctl enable elasticsearch.service && systemctl restart elasticsearch.service

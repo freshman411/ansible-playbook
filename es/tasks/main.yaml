@@ -1,0 +1,75 @@
+---
+
+- name: add user
+  user:
+    name: elastic
+    password: "{{ 'elastic'|password_hash('sha512') }}"
+    state: present
+  tags:
+  - add_user
+
+- name: create dir
+  file:
+    path: "/data/elastic/{{ item }}"
+    owner: elastic
+    group: elastic
+    mode: 0755
+    state: directory
+  with_items:
+  - ['data','logs']
+  tags:
+  - create_dir
+
+- name: set ulimit files
+  lineinfile:
+    dest: /etc/security/limits.conf
+    line: "elastic soft memlock unlimited\nelastic hard memlock unlimited\n"
+  tags:
+  - set_ulimit
+
+- name: set_kernel_exchange
+  lineinfile:
+    dest: /etc/sysctl.conf
+    line: "vm.swappiness = 1\nvm.max_map_count = 262144\n"
+  tags:
+  - set_kernel_exchange
+
+- name: 检测java是否配置
+  shell: "/usr/local/jdk1.8.0_231/bin/java -version"
+  register: test_java
+  ignore_errors: true
+
+- name: config jdk
+  unarchive:
+    src: "/root/soft/jdk-8u231-linux-x64.tar.gz"
+    dest: "/usr/local/"
+    copy: yes
+  when: test_java.rc != 0
+  tags:
+  - set_jdk
+
+- name: set environment
+  lineinfile:
+    #dest: "{{ item }}"
+    dest: /etc/profile
+    line: "export JAVA_HOME=/usr/local/jdk1.8.0_231\nexport JRE_HOME=${JAVA_HOME}/jre\nexport CLASSPATH=.:${JAVA_HOME}/lib:${JRE_HOME}/lib\nexport PATH=${JAVA_HOME}/bin:$PATH\n"
+  with_items:
+  - ['/etc/profile','/home/elastic/.bashrc']
+  when: test_java.rc != 0
+  tags:
+  - set_env
+
+
+- name: source profile
+  shell: source /etc/profile && sysctl -p
+  tags:
+  - profile
+
+- name: install es
+  include_tasks: 
+    file: install_es.yaml
+    apply: 
+      tags:
+        - install_es
+  tags:
+  - install_es

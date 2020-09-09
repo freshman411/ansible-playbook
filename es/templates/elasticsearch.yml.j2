@@ -1,0 +1,34 @@
+cluster.name: elastic-cluster
+{% set ip = inventory_hostname.split('.')[3] %}
+{% if inventory_hostname in groups['es-master'] %}
+node.name: es_master-{{ inventory_hostname.split('.')[3] }}
+node.master: true
+node.data: false
+{% else %}
+node.name: es_data-{{ inventory_hostname.split('.')[3] }}
+node.master: false
+node.data: true
+node.ingest: false
+{% endif %}
+path.data: /data/elastic/data
+path.logs: /data/elastic/logs
+bootstrap.memory_lock: false
+bootstrap.system_call_filter: false
+network.host: {{ inventory_hostname }}
+http.port: 9200
+discovery.seed_hosts: 
+   - 192.168.176.165
+   - 192.168.176.166
+   - 192.168.176.167
+   - 192.168.176.199
+   - 192.168.176.169
+cluster.initial_master_nodes: 
+   - 192.168.176.165
+   - 192.168.176.166
+   - 192.168.176.167
+discovery.zen.no_master_block: write
+discovery.zen.fd.ping_timeout: 10s
+discovery.zen.ping_timeout: 5s
+discovery.zen.minimum_master_nodes: 2
+http.cors.enabled: true
+http.cors.allow-origin: "*"
